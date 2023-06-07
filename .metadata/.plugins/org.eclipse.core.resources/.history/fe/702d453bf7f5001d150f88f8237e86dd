@@ -1,0 +1,87 @@
+package com.smhrd.servlet;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import com.smhrd.model.FullStack;
+
+@WebServlet("/Model2")
+public class Model2 extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        // 1. DB 연동
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
+        try {
+            // 오라클과 연결할 드라이버 가지고 오기 (동적 로딩)
+            Class.forName("oracle.jdbc.OracleDriver");
+
+            // 지정한 데이터베이스와 연결하기 위한 객체(Connection) 생성
+            String url = "jdbc:oracle:thin:@localhost:1521:xe";
+            String user = "service";
+            String password = "12345";
+
+            conn = DriverManager.getConnection(url, user, password);
+
+            // 2. SQL 실행 (FullStack 테이블에서 모든 값 가져오기)
+            String sql = "SELECT * FROM fullstack";
+            ps = conn.prepareStatement(sql);
+            rs = ps.executeQuery();
+
+            List<FullStack> studentList = new ArrayList<>();
+
+            while (rs.next()) {
+                String name = rs.getString("name");
+                String major = rs.getString("major");
+                String phone = rs.getString("phone");
+
+                FullStack fs = new FullStack(name, major, phone);
+                studentList.add(fs);
+            }
+
+            // 3. 3명의 학생정보 -> 세션에 저장
+            HttpSession session = request.getSession();
+            session.setAttribute("studentList", studentList);
+
+            // 4. Ex02model2.jsp로 이동
+            response.sendRedirect("Ex02model2.jsp");
+        } catch (ClassNotFoundException e) {
+            System.out.println("OracleDriver 클래스를 찾을 수 없습니다.");
+        } catch (SQLException e) {
+            System.out.println("SQL 예외가 발생했습니다.");
+        } catch (Exception e) {
+            System.out.println("다른 예외가 발생했습니다.");
+            e.printStackTrace();
+        } finally {
+            // 사용한 자원 반환
+            try {
+                if (rs != null)
+                    rs.close();
+                if (ps != null)
+                    ps.close();
+                if (conn != null)
+                    conn.close();
+            } catch (SQLException e) {
+                System.out.println("자원 반환 중 예외가 발생했습니다.");
+                e.printStackTrace();
+            }
+        }
+    }
+}
